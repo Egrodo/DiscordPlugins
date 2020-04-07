@@ -1,0 +1,1 @@
+C:/Users/egrodo/AppData/Roaming/BetterDiscord/plugins/GameActivityToggle.plugin.js
