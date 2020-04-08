@@ -69,6 +69,7 @@ class GameActivityToggle {
     const row = document.querySelector(`.${selector}`);
     this.btnReference = row.firstElementChild.cloneNode(true);
     this.btnReference.firstElementChild.innerHTML = this.gameActivity ? enabledIcon : disabledIcon;
+    this.btnReference.firstElementChild.style.pointerEvents = 'none'; // Ignore pointer events to fix bug that was causing repeated clicks to be ignored.
     this.btnReference.id = 'GameActivityToggleBtn';
     this.btnReference.setAttribute('aria-label', 'Toggle Game Activity');
     this.btnReference.setAttribute('aria-checked', `${this.gameActivity ? 'true' : 'false'}`);
