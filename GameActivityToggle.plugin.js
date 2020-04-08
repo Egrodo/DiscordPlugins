@@ -21,7 +21,7 @@ const disabledIconHover =
 class GameActivityToggle {
   btnReference = null;
   tooltipReference = null;
-  styleReference = null;
+  soundsReference = null;
   gameActivity = false;
 
   constructor() {
@@ -46,12 +46,18 @@ class GameActivityToggle {
     return 'egrodo';
   }
 
-  load() {
-    // On load check what game activity is currently set to.
+  start() {
+    // On start check what game activity is currently set to.
     this.gameActivity = BdApi.findModuleByProps('guildPositions').showCurrentGame;
+    this.soundsReference = BdApi.findModuleByProps('playSound');
+
+    // Create our DOM elements
+    this.createButton();
+    this.createTooltip();
   }
 
-  start() {
+  createButton() {
+    console.log(this);
     // Use flexMarginReset prop to find the selector for the taskbar row.
     const selector = (BdApi.findModuleByProps('flexMarginReset', 'flex').flex || '').split(' ')[0];
     if (!selector) {
@@ -66,9 +72,14 @@ class GameActivityToggle {
     this.btnReference.id = 'GameActivityToggleBtn';
     this.btnReference.setAttribute('aria-label', 'Toggle Game Activity');
     this.btnReference.setAttribute('aria-checked', `${this.gameActivity ? 'true' : 'false'}`);
-    this.btnReference.addEventListener('click', this.onToggle);
-    row.prepend(this.btnReference);
 
+    this.btnReference.addEventListener('click', this.onToggle);
+    this.btnReference.addEventListener('mouseenter', this.onButtonMouseOver);
+    this.btnReference.addEventListener('mouseleave', this.onButtonMouseOut);
+    row.prepend(this.btnReference);
+  }
+
+  createTooltip() {
     // Also setup my recreated tooltip that uses Discord's classes.
     const tooltipClasses = BdApi.findModuleByProps('tooltipBottom');
 
@@ -88,15 +99,12 @@ class GameActivityToggle {
 
     textWrapper.prepend(bottomArrow);
     wrapperDiv.appendChild(textWrapper);
-
-    this.btnReference.addEventListener('mouseenter', this.onButtonMouseOver);
-    this.btnReference.addEventListener('mouseleave', this.onButtonMouseOut);
-
     document.body.appendChild(wrapperDiv);
   }
 
   onToggle() {
     this.gameActivity = !this.gameActivity;
+    console.log(this.gameActivity);
     BdApi.findModuleByProps('updateRemoteSettings').updateLocalSettings({ showCurrentGame: this.gameActivity });
     this.btnReference.firstElementChild.innerHTML = this.gameActivity ? enabledIcon : disabledIcon;
     this.tooltipReference.firstElementChild.innerText = `Turn ${this.gameActivity ? 'off' : 'on'} game activity`;
@@ -105,8 +113,8 @@ class GameActivityToggle {
 
     // Play the mute / unmute sound on toggle.
     if (this.gameActivity) {
-      BdApi.findModuleByProps('playSound').playSound('unmute', 0.4);
-    } else BdApi.findModuleByProps('playSound').playSound('mute', 0.4);
+      this.soundsReference.playSound('unmute', 0.4);
+    } else this.soundsReference.playSound('mute', 0.4);
   }
 
   // On mouse over swap icons to highlight and display tooltip in correct position.
@@ -135,6 +143,5 @@ class GameActivityToggle {
     this.btnReference.removeEventListener('mouseleave', this.onButtonMouseOut);
     this.btnReference.parentNode.removeChild(this.btnReference);
     this.tooltipReference.parentNode.removeChild(this.tooltipReference);
-    this.styleReference.parentNode.removeChild(this.styleReference);
   }
 }
