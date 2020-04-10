@@ -1,6 +1,6 @@
 /**
  * @name GameActivityToggle
- * @version 1.1.0
+ * @version 1.0.0
  * @description Simple plugin that adds the \"display game activity\" setting
  * on the home toolbar so you can toggle it easier when you don't want your friends knowing how much you play video games.
  *
@@ -40,16 +40,20 @@ const disabledIcon =
 const disabledIconHover =
   '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" viewBox="0 0 24 24" width="20" height="20" xml:space="preserve"><style type="text/css">.st0{fill:#dcddde;}.st1{fill:#F04747;}</style><g><path class="st0" d="M17.7,5.7h-0.8L4.4,18.1c1-0.2,1.9-0.8,2.3-1.8l0.1-0.3c0.3-0.6,0.9-1,1.6-1h1.9l4.7-4.6v0c-0.1-0.1-0.1-0.2-0.1-0.4c0-0.4,0.3-0.8,0.8-0.8c0,0,0,0,0,0c0.1,0,0.2,0,0.3,0.1l0.5-0.5c-0.1-0.1-0.1-0.2-0.1-0.4c0-0.4,0.3-0.8,0.8-0.8c0.1,0,0.3,0,0.4,0.1l1.7-1.7C18.8,5.8,18.3,5.7,17.7,5.7z M23.5,13.4l-2.8-5.8c0,0,0-0.1-0.1-0.1l-1.8,1.8c0.4,0,0.7,0.4,0.7,0.8c0,0.4-0.3,0.8-0.8,0.8c-0.4,0-0.8-0.3-0.8-0.7l-0.8,0.8c0.4,0,0.7,0.4,0.7,0.8c0,0.4-0.4,0.8-0.8,0.8c-0.4,0-0.8-0.3-0.8-0.7L13.1,15h2.4c0.7,0,1.3,0.4,1.6,1l0.1,0.3c0.8,1.6,2.7,2.3,4.4,1.6l0.3-0.1C23.6,17,24.3,15,23.5,13.4z M6.3,5.7C5,5.7,3.8,6.4,3.3,7.6l-2.8,5.8c0,0,0,0,0,0C-0.3,15,0.4,16.9,2,17.7L14,5.7H6.3z M8.2,10.8H7.3c-0.2,0-0.4,0.2-0.4,0.3v0.9c0,0.2-0.2,0.3-0.3,0.3H5.7c-0.2,0-0.3-0.2-0.3-0.3v-0.9c0-0.2-0.2-0.3-0.4-0.3H4.1c-0.2,0-0.4-0.2-0.4-0.4V9.6c0-0.2,0.2-0.4,0.4-0.4H5c0.2,0,0.4-0.2,0.4-0.4V8c0-0.2,0.2-0.4,0.4-0.4h0.8C6.8,7.7,7,7.8,7,8v0.9c0,0.2,0.2,0.4,0.4,0.4h0.9c0.2,0,0.3,0.2,0.3,0.4v0.8C8.6,10.7,8.4,10.8,8.2,10.8z"/><polygon points="19.3,11.1 19.3,11.1 19.3,11.1 "/><polygon points="19.3,11.2 19.3,11.1 19.3,11.1 "/></g><polygon class="st1" points="22.6,2.7 22.6,2.8 19.3,6.1 16,9.3 16,9.4 15,10.4 15,10.4 10.3,15 2.8,22.5 1.4,21.1 21.2,1.3 "/></svg>';
 
+// TODO: BUG: After joining a call the icon moves up, when leaving the call the icon disappears. Maybe tie into the observer method to re-add the icon if it's detected gone from the row?
+// BUG: Game activity alwaays turns off on start?
 class GameActivityToggle {
   btnReference = null;
   tooltipReference = null;
   soundsReference = null;
-  gameActivity = false;
+  observer = null;
+  gameActivity = true;
 
   constructor() {
     this.onToggle = this.onToggle.bind(this);
     this.onButtonMouseOut = this.onButtonMouseOut.bind(this);
     this.onButtonMouseOver = this.onButtonMouseOver.bind(this);
+    this.checkForRemoval = this.checkForRemoval.bind(this);
   }
 
   getName() {
@@ -79,7 +83,6 @@ class GameActivityToggle {
   }
 
   createButton() {
-    console.log(this);
     // Use flexMarginReset prop to find the selector for the taskbar row.
     const selector = (BdApi.findModuleByProps('flexMarginReset', 'flex').flex || '').split(' ')[0];
     if (!selector) {
@@ -100,6 +103,12 @@ class GameActivityToggle {
     this.btnReference.addEventListener('mouseenter', this.onButtonMouseOver);
     this.btnReference.addEventListener('mouseleave', this.onButtonMouseOut);
     row.prepend(this.btnReference);
+
+    // Observe changes on the row to watch for our element being overwritten.
+    if (!this.observer) {
+      this.observer = new MutationObserver(this.checkForRemoval);
+      this.observer.observe(row, { attributes: false, childList: true, subtree: false });
+    }
   }
 
   createTooltip() {
@@ -123,6 +132,13 @@ class GameActivityToggle {
     textWrapper.prepend(bottomArrow);
     wrapperDiv.appendChild(textWrapper);
     document.body.appendChild(wrapperDiv);
+  }
+
+  // Certain UI actions can result in the row being re-rendered and the button removed. Watch the row and re-add the button when necessary.
+  checkForRemoval() {
+    if (!document.getElementById('GameActivityToggleBtn')) {
+      this.createButton();
+    }
   }
 
   onToggle() {
