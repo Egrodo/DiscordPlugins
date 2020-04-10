@@ -30,8 +30,6 @@
     WScript.Quit();
 @else@*/
 
-// BUG: I also need to set the local storage
-
 const enabledIcon =
   '<svg  xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" viewBox="0 0 24 24" width="20" height="20" xml:space="preserve"><style type="text/css">.st0{fill:#B9BBBE;}</style><g><path class="st0" d="M20.8,7.7c-0.6-1.2-1.8-1.9-3.1-1.9H6.3C5,5.7,3.8,6.5,3.2,7.6l-2.8,5.8c0,0,0,0,0,0C-0.3,15.1,0.4,17,2,17.8L2.3,18C4,18.7,5.9,18,6.7,16.4l0.1-0.3c0.3-0.6,0.9-1,1.6-1h7.1c0.7,0,1.3,0.4,1.6,1l0.1,0.3c0.8,1.6,2.7,2.4,4.4,1.6l0.3-0.1c1.6-0.8,2.3-2.7,1.6-4.4L20.8,7.7z M8.6,10.5c0,0.2-0.2,0.4-0.4,0.4H7.3c-0.2,0-0.4,0.2-0.4,0.4v0.9c0,0.2-0.2,0.4-0.4,0.4H5.7c-0.2,0-0.4-0.2-0.4-0.4v-0.9c0-0.2-0.2-0.4-0.4-0.4c0,0,0,0,0,0H4.1c-0.2,0-0.4-0.2-0.4-0.4V9.7c0-0.2,0.2-0.4,0.4-0.4h0.9c0.2,0,0.4-0.2,0.4-0.4c0,0,0,0,0,0V8.1c0-0.2,0.2-0.4,0.4-0.4h0.8C6.8,7.7,7,7.9,7,8.1V9c0,0.2,0.2,0.4,0.4,0.4h0.9c0.2,0,0.3,0.2,0.3,0.4V10.5z M15.6,10.9c-0.4,0-0.8-0.3-0.8-0.8c0-0.4,0.3-0.8,0.8-0.8c0,0,0,0,0,0c0.4,0,0.8,0.3,0.8,0.8C16.4,10.5,16.1,10.9,15.6,10.9z M17.2,7.7C17.2,7.7,17.2,7.7,17.2,7.7c0.4,0,0.8,0.3,0.8,0.8c0,0,0,0,0,0c0,0.4-0.4,0.8-0.8,0.8c-0.4,0-0.8-0.4-0.8-0.8S16.8,7.7,17.2,7.7z M18,11.7L18,11.7C18,11.7,18,11.7,18,11.7c0,0.4-0.3,0.8-0.8,0.8c-0.4,0-0.8-0.3-0.8-0.8c0-0.4,0.3-0.8,0.8-0.8c0,0,0,0,0,0C17.7,10.9,18,11.3,18,11.7C18,11.7,18,11.7,18,11.7L18,11.7C18,11.7,18,11.7,18,11.7C18,11.7,18,11.7,18,11.7z M18.9,10.9c-0.4,0-0.8-0.3-0.8-0.8c0-0.4,0.3-0.8,0.8-0.8c0,0,0,0,0,0c0.4,0,0.8,0.3,0.8,0.8C19.6,10.5,19.3,10.9,18.9,10.9z"/><polygon points="19.3,11.2 19.3,11.2 19.3,11.2 "/><polygon points="19.3,11.2 19.3,11.2 19.3,11.2 "/></g></svg>';
 const enabledIconHover =
@@ -66,11 +64,22 @@ class GameActivityToggle {
   }
 
   getVersion() {
-    return '1.0.0';
+    return '1.2.1';
   }
 
   getAuthor() {
     return 'egrodo';
+  }
+
+  load() {
+    // Not required, but if the user has ZLibrary installed then support auto update.
+    if (window.ZLibrary) {
+      ZLibrary.PluginUpdater.checkForUpdate(
+        this.getName(),
+        this.getVersion(),
+        'https://raw.githubusercontent.com/Egrodo/DiscordPlugins/master/GameActivityToggle.plugin.js',
+      );
+    }
   }
 
   start() {
@@ -94,8 +103,22 @@ class GameActivityToggle {
       return;
     }
 
-    // Create my custom button and prepend it to the toolbar row.
-    const row = document.querySelector(`.${selector}`);
+    // If there are multiple elements found with this selector then the user is most likely in a call. Use the appropriate one
+    const rows = document.querySelectorAll(`.${selector}`);
+    let row;
+    console.log(rows);
+    if (rows.length) {
+      // Find the correct row
+      for (let i = 0; i < rows.length; ++i) {
+        if (rows[i].firstElementChild && rows[i].firstElementChild.getAttribute('aria-label') === 'Mute') {
+          row = rows[i];
+          break;
+        }
+      }
+    } else {
+      row = rows[0];
+    }
+
     this.btnReference = row.firstElementChild.cloneNode(true);
     this.btnReference.firstElementChild.innerHTML = this.gameActivity ? enabledIcon : disabledIcon;
     this.btnReference.firstElementChild.style.pointerEvents = 'none'; // Ignore pointer events to fix bug that was causing repeated clicks to be ignored.
