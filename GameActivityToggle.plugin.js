@@ -1,6 +1,6 @@
 /**
  * @name GameActivityToggle
- * @version 1.2.3
+ * @version 1.2.4
  * @description Simple plugin that adds the \"display game activity\" setting
  * on the home toolbar so you can toggle it easier when you don't want your friends knowing how much you play video games.
  *
@@ -67,7 +67,7 @@ class GameActivityToggle {
   }
 
   getVersion() {
-    return "1.2.3";
+    return "1.2.4";
   }
 
   getAuthor() {
@@ -151,37 +151,54 @@ class GameActivityToggle {
     // Observe changes on the row to watch for our element being overwritten.
     if (!this.observer) {
       this.observer = new MutationObserver(this.checkForRemoval);
-      this.observer.observe(row, { attributes: false, childList: true, subtree: false });
+      this.observer.observe(row, {
+        attributes: false,
+        childList: true,
+        subtree: false,
+      });
     }
   }
 
   createTooltip() {
     // Also setup my recreated tooltip that uses Discord's classes.
     const tooltipClasses = BdApi.findModuleByProps("tooltipBottom");
+    console.log(tooltipClasses);
 
     const wrapperDiv = document.createElement("div");
-    wrapperDiv.style.visibility = "hidden";
-    wrapperDiv.style.position = "absolute";
-    wrapperDiv.style.zIndex = "10000";
-    wrapperDiv.style.pointerEvents = "none";
     this.tooltipReference = wrapperDiv;
 
+    wrapperDiv.style.visibility = "hidden";
+    wrapperDiv.style.position = "absolute";
+    // wrapperDiv.style.zIndex = "1003";
+
+    wrapperDiv.className = [
+      tooltipClasses.tooltip,
+      tooltipClasses.tooltipTop,
+      tooltipClasses.tooltipBlack,
+      tooltipClasses.tooltipDisablePointerEvents,
+    ].join(" ");
+
     const textWrapper = document.createElement("div");
-    textWrapper.className = [tooltipClasses.tooltip, tooltipClasses.tooltipTop, tooltipClasses.tooltipBlack].join(" ");
+
+    textWrapper.className = tooltipClasses.tooltipContent;
     textWrapper.innerText = `Turn ${this.gameActivity ? "off" : "on"} game activity`;
 
     const bottomArrow = document.createElement("div");
     bottomArrow.className = tooltipClasses.tooltipPointer;
 
-    textWrapper.prepend(bottomArrow);
     wrapperDiv.appendChild(textWrapper);
+    wrapperDiv.appendChild(bottomArrow);
     document.body.appendChild(wrapperDiv);
   }
 
   onToggle() {
     this.gameActivity = !this.gameActivity;
-    BdApi.findModuleByProps("updateRemoteSettings").updateLocalSettings({ showCurrentGame: this.gameActivity });
-    BdApi.findModuleByProps("updateRemoteSettings").updateRemoteSettings({ showCurrentGame: this.gameActivity });
+    BdApi.findModuleByProps("updateRemoteSettings").updateLocalSettings({
+      showCurrentGame: this.gameActivity,
+    });
+    BdApi.findModuleByProps("updateRemoteSettings").updateRemoteSettings({
+      showCurrentGame: this.gameActivity,
+    });
     this.btnReference.firstElementChild.innerHTML = this.gameActivity ? enabledIcon : disabledIcon;
 
     // In order to preserve the tooltipPointer but also change the message we have to do this
@@ -240,6 +257,10 @@ class GameActivityToggle {
       this.btnReference.setAttribute("aria-checked", `${this.gameActivity ? "true" : "false"}`);
       this.btnReference.addEventListener("click", this.onToggle);
     }
+  }
+
+  getSettingsPanel() {
+    console.log("Settings panel!");
   }
 
   stop() {
