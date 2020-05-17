@@ -1,6 +1,6 @@
 /**
  * @name GameActivityToggle
- * @version 1.2.4
+ * @version 1.2.6
  * @description Simple plugin that adds the \"display game activity\" setting
  * on the home toolbar so you can toggle it easier when you don't want your friends knowing how much you play video games.
  *
@@ -46,8 +46,9 @@ const muteIconPath = `M14.99 11C14.99 12.66 13.66 14 12 14C10.34 14 9 12.66 9 11
 class GameActivityToggle {
   btnReference = null;
   tooltipReference = null;
-  soundsReference = null;
+  soundReference = null;
   observer = null;
+  soundToggled = true;
   gameActivity = true;
 
   constructor() {
@@ -67,7 +68,7 @@ class GameActivityToggle {
   }
 
   getVersion() {
-    return "1.2.4";
+    return "1.2.6";
   }
 
   getAuthor() {
@@ -88,7 +89,24 @@ class GameActivityToggle {
   start() {
     // On start check what game activity is currently set to.
     this.gameActivity = BdApi.findModuleByProps("guildPositions").showCurrentGame;
-    this.soundsReference = BdApi.findModuleByProps("playSound");
+    this.soundReference = BdApi.findModuleByProps("playSound");
+
+    // Check if there's a sound setting saved
+    // For some reason BdApi interprets boolean false's as undefined, so we're storing the toggle as a string and converting it.
+    const savedSoundSetting = BdApi.loadData(this.getName(), "soundToggled");
+    if (!savedSoundSetting) {
+      this.soundToggled = true;
+    } else if (savedSoundSetting === "true") {
+      this.savedSoundSetting = true;
+    } else if (savedSoundSetting === "false") {
+      this.savedSoundSetting = false;
+    } else {
+      console.error(
+        `Game Activity Toggle Error: soundToggle data somehow corrupted, not true/false: ${savedSoundSetting}`
+      );
+      this.savedSoundSetting = true;
+      BdApi.saveData(this.getName(), "soundToggled", "true");
+    }
 
     // Create our DOM elements
     this.createButton();
@@ -162,7 +180,6 @@ class GameActivityToggle {
   createTooltip() {
     // Also setup my recreated tooltip that uses Discord's classes.
     const tooltipClasses = BdApi.findModuleByProps("tooltipBottom");
-    console.log(tooltipClasses);
 
     const wrapperDiv = document.createElement("div");
     this.tooltipReference = wrapperDiv;
@@ -209,10 +226,12 @@ class GameActivityToggle {
 
     this.btnReference.setAttribute("aria-checked", `${this.gameActivity ? "true" : "false"}`);
 
-    // Play the mute / unmute sound on toggle.
-    if (this.gameActivity) {
-      this.soundsReference.playSound("unmute", 0.4);
-    } else this.soundsReference.playSound("mute", 0.4);
+    // If enabled, play the mute / unmute sound on toggle.
+    if (this.soundToggled) {
+      if (this.gameActivity) {
+        this.soundReference.playSound("unmute", 0.4);
+      } else this.soundReference.playSound("mute", 0.4);
+    }
   }
 
   // On mouse over swap icons to highlight and display tooltip in correct position.
@@ -259,8 +278,49 @@ class GameActivityToggle {
     }
   }
 
+  // Create settings panel that allows users to disable the alert sound
   getSettingsPanel() {
-    console.log("Settings panel!");
+    // Create wrapper row
+    const wrapper = document.createElement("div");
+    wrapper.className = "ui-flex flex-vertical flex-justify-start flex-align-stretch flex-nowrap ui-switch-item";
+    wrapper.style.marginTop = "1.5rem";
+    const titleContainer = document.createElement("div");
+    titleContainer.className = 'class="ui-flex flex-horizontal flex-justify-start flex-align-stretch flex-nowrap"';
+    titleContainer.style.display = "flex";
+    const title = document.createElement("h3");
+    title.innerText = "Alert Sound";
+    title.className = "ui-form-title h3 margin-reset margin-reset ui-flex-child";
+
+    titleContainer.appendChild(title);
+
+    // Create switch
+    const button = document.createElement("div");
+    button.classList.add("bd-switch", ...(this.soundToggled ? ["bd-switch-checked"] : []));
+
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    input.className = "bd-checkbox";
+    button.appendChild(input);
+    button.style.float = "right";
+    input.onclick = () => {
+      this.soundToggled = !this.soundToggled;
+      BdApi.saveData(this.getName(), "soundToggled", this.soundToggled.toString());
+
+      button.classList.remove(...(this.soundToggled ? [] : ["bd-switch-checked"]));
+      button.classList.add(...(this.soundToggled ? ["bd-switch-checked"] : []));
+    };
+
+    // Create description box and append button to it
+    const description = document.createElement("div");
+    description.className = "ui-form-text style-description margin-top-4";
+    description.innerText = "Toggle the alert sound that plays on button click";
+    description.style.borderBottom = "none";
+
+    description.appendChild(button);
+
+    wrapper.appendChild(titleContainer);
+    wrapper.appendChild(description);
+    return wrapper;
   }
 
   stop() {
